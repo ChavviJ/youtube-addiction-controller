@@ -1,14 +1,16 @@
-\---
+## title: YouTube Addiction Controller
 
-title: Youtube Addiction Controller
-emoji: 📱
-colorFrom: red
-colorTo: yellow
-sdk: docker
-pinned: false
----
+## emoji: 🎯
 
+## colorFrom: blue
 
+## colorTo: purple
+
+## sdk: docker
+
+## app\_file: app.py
+
+## pinned: false
 
 \# 📱 YouTube Addiction Controller — OpenEnv Hackathon
 
@@ -40,7 +42,7 @@ youtube-addiction-controller/
 └── app/
     ├── main.py           # FastAPI server (reset/step/state endpoints)
     ├── environment.py    # Core RL environment logic
-    └── graders.py        # Task graders → scores in \[0.0, 1.0]
+    └── graders.py        # Task graders → scores in \\\[0.0, 1.0]
 ```
 
 \---
@@ -49,9 +51,9 @@ youtube-addiction-controller/
 
 |Task ID|Name|Difficulty|
 |-|-|-|
-|`task\_casual`|Casual User|Easy|
-|`task\_addict`|Addicted User|Medium|
-|`task\_binge\_procrastinator`|Binge Procrastinator|Hard|
+|`task\\\_casual`|Casual User|Easy|
+|`task\\\_addict`|Addicted User|Medium|
+|`task\\\_binge\\\_procrastinator`|Binge Procrastinator|Hard|
 
 \---
 
@@ -71,14 +73,14 @@ youtube-addiction-controller/
 
 ```json
 POST /reset
-{ "task\_id": "task\_casual" }
+{ "task\\\_id": "task\\\_casual" }
 ```
 
 ### Step
 
 ```json
 POST /step
-{ "action": "allow" }   // or "block" or "suggest\_break"
+{ "action": "allow" }   // or "block" or "suggest\\\_break"
 ```
 
 \---
@@ -106,10 +108,10 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 7860
 
 # In another terminal, run the inference script
-export API\_BASE\_URL="https://api.openai.com/v1"
-export MODEL\_NAME="gpt-4o-mini"
-export HF\_TOKEN="your-api-key"
-export ENV\_URL="http://localhost:7860"
+export API\\\_BASE\\\_URL="https://api.openai.com/v1"
+export MODEL\\\_NAME="gpt-4o-mini"
+export HF\\\_TOKEN="your-api-key"
+export ENV\\\_URL="http://localhost:7860"
 python inference.py
 ```
 
@@ -130,8 +132,8 @@ docker run -p 7860:7860 youtube-addiction-ctrl
 * \[x] `step()`, `reset()`, `state()` endpoints implemented
 * \[x] Dockerfile builds cleanly
 * \[x] `inference.py` in root directory
-* \[x] Uses OpenAI client with `API\_BASE\_URL`, `MODEL\_NAME`, `HF\_TOKEN`
-* \[x] Emits `\[START]`, `\[STEP]`, `\[END]` structured logs
+* \[x] Uses OpenAI client with `API\\\_BASE\\\_URL`, `MODEL\\\_NAME`, `HF\\\_TOKEN`
+* \[x] Emits `\\\[START]`, `\\\[STEP]`, `\\\[END]` structured logs
 * \[x] 3 tasks with graders returning scores in \[0.0, 1.0]
 * \[x] Runs under 20 minutes on 2 vCPU / 8GB RAM
 
