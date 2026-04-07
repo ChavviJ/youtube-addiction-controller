@@ -1,16 +1,16 @@
-## title: YouTube Addiction Controller
+title: YouTube Addiction Controller
 
-## emoji: 🎯
+emoji: 🎯
 
-## colorFrom: blue
+colorFrom: blue
 
-## colorTo: purple
+colorTo: purple
 
-## sdk: docker
+sdk: docker
 
-## app\_file: app.py
+app\_file: app.py
 
-## pinned: false
+pinned: false
 
 \# 📱 YouTube Addiction Controller — OpenEnv Hackathon
 
