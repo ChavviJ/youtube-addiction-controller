@@ -1,0 +1,15 @@
+[project]
+name = "youtube-addiction-controller"
+version = "0.1.0"
+description = "OpenEnv environment for controlling YouTube addiction"
+authors = [
+    { name = "Your Name" }
+]
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "requests"
+]
+
+[tool.setuptools]
+packages = ["."]
