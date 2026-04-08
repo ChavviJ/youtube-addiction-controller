@@ -16,7 +16,15 @@ MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 HF_TOKEN = os.environ.get("HF_TOKEN", "")
 ENV_URL = os.environ.get("ENV_URL", "http://localhost:7860")
 
+import os
+HF_TOKEN = os.environ.get("HF_TOKEN")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+
 client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
+
+if not HF_TOKEN:
+    raise ValueError("HF_TOKEN environment variable is not set")
 
 TASKS = ["task_casual", "task_addict", "task_binge_procrastinator"]
 
