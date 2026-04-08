@@ -1,28 +1,45 @@
+---
+title: YouTube Addiction Controller
+emoji: 📱
+colorFrom: red
+colorTo: yellow
+sdk: docker
+pinned: false
+---
+
 name: youtube-addiction-controller
 version: "1.0.0"
 description: >
-  An RL environment where an LLM agent acts as a screen-time controller.
-  It observes a simulated user's YouTube session and decides to allow, block,
-  or suggest a break — balancing productivity vs entertainment.
-author: hackathon-participant
-tags: [productivity, screen-time, rl, llm-agent]
+  An RL environment where an LLM agent acts as a screen-time controller,
+  balancing a simulated user's YouTube entertainment vs productivity.
+
+entrypoint: http://localhost:7860
+
+endpoints:
+  reset:
+    method: POST
+    path: /reset
+  step:
+    method: POST
+    path: /step
+  state:
+    method: GET
+    path: /state
 
 tasks:
   - id: task_casual
     name: Casual User
-    description: A balanced user who occasionally watches YouTube but mostly stays productive.
+    description: A balanced user who occasionally watches YouTube.
     difficulty: easy
     max_steps: 20
-
   - id: task_addict
     name: Addicted User
-    description: A heavy YouTube user who resists breaks and binge-watches for hours.
+    description: A heavy YouTube user who resists breaks.
     difficulty: medium
     max_steps: 20
-
   - id: task_binge_procrastinator
     name: Binge Procrastinator
-    description: A user with deadlines who keeps switching back to YouTube despite blocks.
+    description: A user with deadlines who keeps switching back to YouTube.
     difficulty: hard
     max_steps: 20
 
@@ -32,17 +49,37 @@ actions:
   - id: block
     description: Block YouTube / pause the session.
   - id: suggest_break
-    description: Suggest a short break with a motivational nudge.
+    description: Suggest a short break.
 
 observation_space:
-  - session_minutes: integer        # total session time so far
-  - youtube_minutes: integer        # minutes spent on YouTube this session
-  - productive_minutes: integer     # minutes on productive tasks
-  - current_activity: string        # "youtube" | "productive" | "idle"
-  - videos_watched: integer         # number of videos watched
-  - last_action: string             # last action taken by agent
-  - user_mood: string               # "focused" | "bored" | "resistant" | "tired"
-  - time_of_day: string             # "morning" | "afternoon" | "evening" | "night"
-  - pending_deadline: boolean       # whether user has a deadline today
+  session_minutes:
+    type: integer
+    description: Total session time in minutes
+  youtube_minutes:
+    type: integer
+    description: Minutes spent on YouTube
+  productive_minutes:
+    type: integer
+    description: Minutes on productive tasks
+  current_activity:
+    type: string
+    description: "youtube | productive | idle"
+  videos_watched:
+    type: integer
+    description: Number of videos watched
+  last_action:
+    type: string
+    description: Last action taken by agent
+  user_mood:
+    type: string
+    description: "focused | bored | resistant | tired"
+  time_of_day:
+    type: string
+    description: "morning | afternoon | evening | night"
+  pending_deadline:
+    type: boolean
+    description: Whether user has a deadline today
 
-reward_range: [0.0, 1.0]
+reward_range:
+  low: 0.0
+  high: 1.0
