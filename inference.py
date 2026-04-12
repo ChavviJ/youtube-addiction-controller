@@ -10,8 +10,6 @@ import time
 import requests
 
 # ── Config from environment variables ─────────────────────────────────────────
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
 ENV_URL = os.environ.get("ENV_URL", "http://localhost:7860")
 
@@ -58,7 +56,7 @@ def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
         resp.raise_for_status()
         return resp.json()
     except requests.exceptions.RequestException as e:
-        print(json.dumps({"type": "ERROR", "event": "env_call_failed", "endpoint": endpoint, "error": str(e)}), flush=True)
+        print(f"[STEP] event=env_error endpoint={endpoint} error={str(e)}", flush=True)
         raise
 
 
@@ -82,7 +80,7 @@ What action should you take? Reply with ONLY: allow, block, or suggest_break"""
         )
         action = response.choices[0].message.content.strip().lower()
     except Exception as e:
-        print(json.dumps({"type": "ERROR", "event": "llm_call_failed", "error": str(e)}), flush=True)
+        print(f"[STEP] event=llm_error error={str(e)}", flush=True)
         action = "allow"
 
     if action not in ("allow", "block", "suggest_break"):
@@ -106,17 +104,14 @@ def run_episode(task_id: str) -> dict:
         total_reward += reward
         observation = step_result["observation"]
 
-        print(json.dumps({
-            "type": "STEP",
-            "task_id": task_id,
-            "step": step_num,
-            "action": action,
-            "reward": reward,
-            "done": observation.get("done", False),
-            "youtube_minutes": observation.get("youtube_minutes", 0),
-            "productive_minutes": observation.get("productive_minutes", 0),
-            "user_mood": observation.get("user_mood", ""),
-        }), flush=True)
+        print(
+            f"[STEP] task={task_id} step={step_num} action={action} reward={reward} "
+            f"done={observation.get('done', False)} "
+            f"youtube_minutes={observation.get('youtube_minutes', 0)} "
+            f"productive_minutes={observation.get('productive_minutes', 0)} "
+            f"user_mood={observation.get('user_mood', '')}",
+            flush=True
+        )
 
         time.sleep(0.1)
 
@@ -125,30 +120,27 @@ def run_episode(task_id: str) -> dict:
 
 
 def main():
-    print(json.dumps({
-        "type": "START",
-        "model": os.environ.get("MODEL_NAME", "gpt-4o-mini"),
-        "tasks": TASKS,
-        "env_url": os.environ.get("ENV_URL", "http://localhost:7860"),
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }), flush=True)
+    model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+    env_url = os.environ.get("ENV_URL", "http://localhost:7860")
+
+    # Required [START] block
+    print(f"[START] task=youtube_addiction_controller model={model} env_url={env_url}", flush=True)
 
     all_results = []
 
     for task_id in TASKS:
-        print(json.dumps({"type": "STEP", "event": "task_start", "task_id": task_id}), flush=True)
+        print(f"[STEP] event=task_start task={task_id}", flush=True)
         result = run_episode(task_id)
         all_results.append(result)
-        print(json.dumps({"type": "STEP", "event": "task_end", **result}), flush=True)
+        print(
+            f"[STEP] event=task_end task={result['task_id']} score={result['score']} steps={result['steps']}",
+            flush=True
+        )
 
     overall_score = round(sum(r["score"] for r in all_results) / len(all_results), 4)
 
-    print(json.dumps({
-        "type": "END",
-        "tasks": all_results,
-        "overall_score": overall_score,
-        "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }), flush=True)
+    # Required [END] block
+    print(f"[END] task=youtube_addiction_controller score={overall_score} steps={sum(r['steps'] for r in all_results)}", flush=True)
 
 
 if __name__ == "__main__":
