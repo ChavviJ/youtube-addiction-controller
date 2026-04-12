@@ -25,6 +25,9 @@ endpoints:
   state:
     method: GET
     path: /state
+  grade:
+    method: GET
+    path: /grade
 
 tasks:
   - id: task_casual
@@ -32,16 +35,19 @@ tasks:
     description: A balanced user who occasionally watches YouTube.
     difficulty: easy
     max_steps: 20
+    grader: grade_task_casual
   - id: task_addict
     name: Addicted User
     description: A heavy YouTube user who resists breaks.
     difficulty: medium
     max_steps: 20
+    grader: grade_task_addict
   - id: task_binge_procrastinator
     name: Binge Procrastinator
     description: A user with deadlines who keeps switching back to YouTube.
     difficulty: hard
     max_steps: 20
+    grader: grade_task_binge_procrastinator
 
 actions:
   - id: allow
