@@ -83,3 +83,14 @@ observation_space:
 reward_range:
   low: 0.0
   high: 1.0
+
+graders:
+  - task_id: task_casual
+    module: app.graders
+    function: grade_task_casual
+  - task_id: task_addict
+    module: app.graders
+    function: grade_task_addict
+  - task_id: task_binge_procrastinator
+    module: app.graders
+    function: grade_task_binge_procrastinator
