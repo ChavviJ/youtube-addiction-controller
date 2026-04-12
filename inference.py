@@ -10,15 +10,6 @@ import time
 import requests
 from openai import OpenAI
 
-# ── Scaler injects these exact variable names ──────────────────────────────────
-API_KEY = os.environ.get("API_KEY", "")
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-ENV_URL = os.environ.get("ENV_URL", "https://team-youtube-ctrl-youtube-addiction-controller.hf.space")
-
-# ── Initialize client with Scaler's proxy creds ────────────────────────────────
-client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
-
 TASKS = ["task_casual", "task_addict", "task_binge_procrastinator"]
 
 SYSTEM_PROMPT = """You are a YouTube screen-time controller AI.
@@ -26,7 +17,7 @@ You observe a user's session and decide the best action to take.
 
 Available actions:
 - "allow"         → Let the user continue what they're doing
-- "block"         → Block YouTube / stop the session  
+- "block"         → Block YouTube / stop the session
 - "suggest_break" → Suggest a short break
 
 Your goal: maximize productivity while respecting the user's wellbeing.
@@ -42,7 +33,11 @@ Respond with ONLY one word: allow, block, or suggest_break
 
 
 def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
-    url = f"{ENV_URL}{endpoint}"
+    env_url = os.environ.get(
+        "ENV_URL",
+        "https://team-youtube-ctrl-youtube-addiction-controller.hf.space"
+    )
+    url = f"{env_url}{endpoint}"
     if method == "POST":
         resp = requests.post(url, json=payload, timeout=30)
     else:
@@ -52,6 +47,13 @@ def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
 
 
 def get_action_from_llm(observation: dict) -> str:
+    # Read creds fresh every call so Scaler's injected values are always used
+    api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN", "")
+    base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+    model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+
+    client = OpenAI(api_key=api_key, base_url=base_url)
+
     obs_str = json.dumps(observation, indent=2)
     user_msg = f"""Current session state:
 {obs_str}
@@ -59,7 +61,7 @@ def get_action_from_llm(observation: dict) -> str:
 What action should you take? Reply with ONLY: allow, block, or suggest_break"""
 
     response = client.chat.completions.create(
-        model=MODEL_NAME,
+        model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_msg},
@@ -101,26 +103,41 @@ def run_episode(task_id: str) -> dict:
         time.sleep(0.1)
 
     score = round(min(1.0, total_reward / max(step_num, 1)), 4)
-    return {"task_id": task_id, "score": score, "steps": step_num, "total_reward": round(total_reward, 4)}
+    return {
+        "task_id": task_id,
+        "score": score,
+        "steps": step_num,
+        "total_reward": round(total_reward, 4)
+    }
 
 
 def main():
-    print(f"[START] task=youtube_addiction_controller model={MODEL_NAME} env_url={ENV_URL}", flush=True)
+    model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+    env_url = os.environ.get(
+        "ENV_URL",
+        "https://team-youtube-ctrl-youtube-addiction-controller.hf.space"
+    )
+
+    print(f"[START] task=youtube_addiction_controller model={model} env_url={env_url}", flush=True)
 
     all_results = []
-
     for task_id in TASKS:
         print(f"[STEP] event=task_start task={task_id}", flush=True)
         result = run_episode(task_id)
         all_results.append(result)
         print(
-            f"[STEP] event=task_end task={result['task_id']} score={result['score']} steps={result['steps']}",
+            f"[STEP] event=task_end task={result['task_id']} "
+            f"score={result['score']} steps={result['steps']}",
             flush=True
         )
 
     overall_score = round(sum(r["score"] for r in all_results) / len(all_results), 4)
+    total_steps = sum(r["steps"] for r in all_results)
 
-    print(f"[END] task=youtube_addiction_controller score={overall_score} steps={sum(r['steps'] for r in all_results)}", flush=True)
+    print(
+        f"[END] task=youtube_addiction_controller score={overall_score} steps={total_steps}",
+        flush=True
+    )
 
 
 if __name__ == "__main__":
