@@ -10,21 +10,18 @@ import time
 import requests
 from openai import OpenAI
 
-# ── Config from environment variables ────────────────────────────────────────
+# ── Config from environment variables ─────────────────────────────────────────
+HF_TOKEN = os.environ.get("HF_TOKEN", "")
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-HF_TOKEN = os.environ.get("HF_TOKEN", "")
 ENV_URL = os.environ.get("ENV_URL", "http://localhost:7860")
 
-import os
-HF_TOKEN = os.environ.get("HF_TOKEN")
-API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-
-client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
-
+# ── Validate token BEFORE using it ────────────────────────────────────────────
 if not HF_TOKEN:
     raise ValueError("HF_TOKEN environment variable is not set")
+
+# ── Initialize client AFTER validation ────────────────────────────────────────
+client = OpenAI(api_key=HF_TOKEN, base_url=API_BASE_URL)
 
 TASKS = ["task_casual", "task_addict", "task_binge_procrastinator"]
 
@@ -50,12 +47,16 @@ Respond with ONLY one word: allow, block, or suggest_break
 
 def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
     url = f"{ENV_URL}{endpoint}"
-    if method == "POST":
-        resp = requests.post(url, json=payload, timeout=30)
-    else:
-        resp = requests.get(url, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        if method == "POST":
+            resp = requests.post(url, json=payload, timeout=30)
+        else:
+            resp = requests.get(url, timeout=30)
+        resp.raise_for_status()
+        return resp.json()
+    except requests.exceptions.RequestException as e:
+        print(json.dumps({"type": "ERROR", "event": "env_call_failed", "endpoint": endpoint, "error": str(e)}), flush=True)
+        raise
 
 
 def get_action_from_llm(observation: dict) -> str:
@@ -65,16 +66,21 @@ def get_action_from_llm(observation: dict) -> str:
 
 What action should you take? Reply with ONLY: allow, block, or suggest_break"""
 
-    response = client.chat.completions.create(
-        model=MODEL_NAME,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_msg},
-        ],
-        max_tokens=10,
-        temperature=0.2,
-    )
-    action = response.choices[0].message.content.strip().lower()
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_msg},
+            ],
+            max_tokens=10,
+            temperature=0.2,
+        )
+        action = response.choices[0].message.content.strip().lower()
+    except Exception as e:
+        print(json.dumps({"type": "ERROR", "event": "llm_call_failed", "error": str(e)}), flush=True)
+        action = "allow"  # safe fallback
+
     # Sanitize
     if action not in ("allow", "block", "suggest_break"):
         action = "allow"
@@ -158,4 +164,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
