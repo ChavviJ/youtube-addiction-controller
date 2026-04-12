@@ -9,10 +9,6 @@ import json
 import time
 import requests
 
-# ── Config from environment variables ─────────────────────────────────────────
-MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-ENV_URL = os.environ.get("ENV_URL", "http://localhost:7860")
-
 TASKS = ["task_casual", "task_addict", "task_binge_procrastinator"]
 
 SYSTEM_PROMPT = """You are a YouTube screen-time controller AI.
@@ -36,13 +32,14 @@ Respond with ONLY one word: allow, block, or suggest_break
 
 
 def get_client():
-    """Create OpenAI client lazily to avoid crash at import time."""
+    """Create OpenAI client using the validator-injected API_KEY and API_BASE_URL."""
     from openai import OpenAI
-    token = os.environ.get("HF_TOKEN", "")
+    # Scaler injects API_KEY and API_BASE_URL — must use these exact names
+    api_key = os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
     base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-    if not token:
-        raise ValueError("HF_TOKEN environment variable is not set")
-    return OpenAI(api_key=token, base_url=base_url)
+    if not api_key:
+        raise ValueError("API_KEY environment variable is not set")
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 
 def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
@@ -69,8 +66,9 @@ What action should you take? Reply with ONLY: allow, block, or suggest_break"""
 
     try:
         client = get_client()
+        model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
         response = client.chat.completions.create(
-            model=os.environ.get("MODEL_NAME", "gpt-4o-mini"),
+            model=model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_msg},
@@ -123,7 +121,6 @@ def main():
     model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
     env_url = os.environ.get("ENV_URL", "http://localhost:7860")
 
-    # Required [START] block
     print(f"[START] task=youtube_addiction_controller model={model} env_url={env_url}", flush=True)
 
     all_results = []
@@ -139,7 +136,6 @@ def main():
 
     overall_score = round(sum(r["score"] for r in all_results) / len(all_results), 4)
 
-    # Required [END] block
     print(f"[END] task=youtube_addiction_controller score={overall_score} steps={sum(r['steps'] for r in all_results)}", flush=True)
 
 
