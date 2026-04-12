@@ -2,13 +2,13 @@
 inference.py — YouTube Addiction Controller
 LLM agent (via OpenAI client) interacts with the OpenEnv environment.
 Emits structured [START], [STEP], [END] logs as required by the hackathon.
+Uses raw HTTP requests to avoid OpenAI SDK proxy conflicts in Scaler's sandbox.
 """
 
 import os
 import json
 import time
 import requests
-from openai import OpenAI
 
 TASKS = ["task_casual", "task_addict", "task_binge_procrastinator"]
 
@@ -31,16 +31,50 @@ Rules:
 Respond with ONLY one word: allow, block, or suggest_break
 """
 
-FALLBACK_BASE_URL = "https://api.openai.com/v1"
 FALLBACK_ENV_URL = "https://team-youtube-ctrl-youtube-addiction-controller.hf.space"
+FALLBACK_API_URL = "https://api.openai.com/v1"
 
 
-def make_client():
-    api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN") or "dummy-key"
-    base_url = os.environ.get("API_BASE_URL") or FALLBACK_BASE_URL
-    # Strip trailing slash — OpenAI SDK crashes on trailing slashes
-    base_url = base_url.rstrip("/")
-    return OpenAI(api_key=api_key, base_url=base_url)
+def call_llm(observation: dict) -> str:
+    """Call LLM via raw HTTP — avoids OpenAI SDK proxy conflicts."""
+    api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN") or ""
+    base_url = (os.environ.get("API_BASE_URL") or FALLBACK_API_URL).rstrip("/")
+    model = os.environ.get("MODEL_NAME") or "gpt-4o-mini"
+
+    obs_str = json.dumps(observation, indent=2)
+    user_msg = f"""Current session state:
+{obs_str}
+
+What action should you take? Reply with ONLY: allow, block, or suggest_break"""
+
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_msg},
+        ],
+        "max_tokens": 10,
+        "temperature": 0.2,
+    }
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    resp = requests.post(
+        f"{base_url}/chat/completions",
+        headers=headers,
+        json=payload,
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    action = data["choices"][0]["message"]["content"].strip().lower()
+
+    if action not in ("allow", "block", "suggest_break"):
+        action = "allow"
+    return action
 
 
 def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
@@ -54,30 +88,6 @@ def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
     return resp.json()
 
 
-def get_action_from_llm(observation: dict) -> str:
-    model = os.environ.get("MODEL_NAME") or "gpt-4o-mini"
-    obs_str = json.dumps(observation, indent=2)
-    user_msg = f"""Current session state:
-{obs_str}
-
-What action should you take? Reply with ONLY: allow, block, or suggest_break"""
-
-    client = make_client()
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_msg},
-        ],
-        max_tokens=10,
-        temperature=0.2,
-    )
-    action = response.choices[0].message.content.strip().lower()
-    if action not in ("allow", "block", "suggest_break"):
-        action = "allow"
-    return action
-
-
 def run_episode(task_id: str) -> dict:
     reset_result = call_env("/reset", method="POST", payload={"task_id": task_id})
     observation = reset_result["observation"]
@@ -87,7 +97,7 @@ def run_episode(task_id: str) -> dict:
 
     while not observation.get("done", False):
         step_num += 1
-        action = get_action_from_llm(observation)
+        action = call_llm(observation)
         step_result = call_env("/step", method="POST", payload={"action": action})
 
         reward = step_result["reward"]
@@ -110,7 +120,7 @@ def run_episode(task_id: str) -> dict:
         "task_id": task_id,
         "score": score,
         "steps": step_num,
-        "total_reward": round(total_reward, 4)
+        "total_reward": round(total_reward, 4),
     }
 
 
