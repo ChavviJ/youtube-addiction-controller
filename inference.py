@@ -31,12 +31,20 @@ Rules:
 Respond with ONLY one word: allow, block, or suggest_break
 """
 
+FALLBACK_BASE_URL = "https://api.openai.com/v1"
+FALLBACK_ENV_URL = "https://team-youtube-ctrl-youtube-addiction-controller.hf.space"
+
+
+def make_client():
+    api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN") or "dummy-key"
+    base_url = os.environ.get("API_BASE_URL") or FALLBACK_BASE_URL
+    # Strip trailing slash — OpenAI SDK crashes on trailing slashes
+    base_url = base_url.rstrip("/")
+    return OpenAI(api_key=api_key, base_url=base_url)
+
 
 def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
-    env_url = os.environ.get(
-        "ENV_URL",
-        "https://team-youtube-ctrl-youtube-addiction-controller.hf.space"
-    )
+    env_url = (os.environ.get("ENV_URL") or FALLBACK_ENV_URL).rstrip("/")
     url = f"{env_url}{endpoint}"
     if method == "POST":
         resp = requests.post(url, json=payload, timeout=30)
@@ -47,19 +55,14 @@ def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
 
 
 def get_action_from_llm(observation: dict) -> str:
-    # Read creds fresh every call so Scaler's injected values are always used
-    api_key = os.environ.get("API_KEY") or os.environ.get("HF_TOKEN", "")
-    base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-    model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-
-    client = OpenAI(api_key=api_key, base_url=base_url)
-
+    model = os.environ.get("MODEL_NAME") or "gpt-4o-mini"
     obs_str = json.dumps(observation, indent=2)
     user_msg = f"""Current session state:
 {obs_str}
 
 What action should you take? Reply with ONLY: allow, block, or suggest_break"""
 
+    client = make_client()
     response = client.chat.completions.create(
         model=model,
         messages=[
@@ -112,11 +115,8 @@ def run_episode(task_id: str) -> dict:
 
 
 def main():
-    model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-    env_url = os.environ.get(
-        "ENV_URL",
-        "https://team-youtube-ctrl-youtube-addiction-controller.hf.space"
-    )
+    model = os.environ.get("MODEL_NAME") or "gpt-4o-mini"
+    env_url = (os.environ.get("ENV_URL") or FALLBACK_ENV_URL).rstrip("/")
 
     print(f"[START] task=youtube_addiction_controller model={model} env_url={env_url}", flush=True)
 
