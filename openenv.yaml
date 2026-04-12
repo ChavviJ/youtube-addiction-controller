@@ -1,12 +1,3 @@
----
-title: YouTube Addiction Controller
-emoji: 📱
-colorFrom: red
-colorTo: yellow
-sdk: docker
-pinned: false
----
-
 name: youtube-addiction-controller
 version: "1.0.0"
 description: >
@@ -35,19 +26,27 @@ tasks:
     description: A balanced user who occasionally watches YouTube.
     difficulty: easy
     max_steps: 20
-    grader: grade_task_casual
+    grader:
+      module: app.graders
+      function: grade_task_casual
+
   - id: task_addict
     name: Addicted User
     description: A heavy YouTube user who resists breaks.
     difficulty: medium
     max_steps: 20
-    grader: grade_task_addict
+    grader:
+      module: app.graders
+      function: grade_task_addict
+
   - id: task_binge_procrastinator
     name: Binge Procrastinator
     description: A user with deadlines who keeps switching back to YouTube.
     difficulty: hard
     max_steps: 20
-    grader: grade_task_binge_procrastinator
+    grader:
+      module: app.graders
+      function: grade_task_binge_procrastinator
 
 actions:
   - id: allow
@@ -89,14 +88,3 @@ observation_space:
 reward_range:
   low: 0.0
   high: 1.0
-
-graders:
-  - task_id: task_casual
-    module: app.graders
-    function: grade_task_casual
-  - task_id: task_addict
-    module: app.graders
-    function: grade_task_addict
-  - task_id: task_binge_procrastinator
-    module: app.graders
-    function: grade_task_binge_procrastinator
