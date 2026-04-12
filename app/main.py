@@ -9,7 +9,12 @@ from typing import Optional
 import uvicorn
 
 from app.environment import YouTubeAddictionEnv
-from app.graders import run_all_graders
+from app.graders import (
+    grade_task_casual,
+    grade_task_addict,
+    grade_task_binge_procrastinator,
+    run_all_graders,
+)
 
 app = FastAPI(
     title="YouTube Addiction Controller",
@@ -76,8 +81,56 @@ def state():
 @app.get("/grade")
 def grade():
     """Run all graders and return scores for all 3 tasks."""
-    results = run_all_graders()
-    return results
+    r1 = grade_task_casual()
+    r2 = grade_task_addict()
+    r3 = grade_task_binge_procrastinator()
+
+    overall = round((r1["score"] + r2["score"] + r3["score"]) / 3, 4)
+
+    return {
+        "graders": [
+            {
+                "task_id": "task_casual",
+                "grader": "grade_task_casual",
+                "score": r1["score"],
+                "steps": r1["steps"],
+                "description": r1["description"],
+            },
+            {
+                "task_id": "task_addict",
+                "grader": "grade_task_addict",
+                "score": r2["score"],
+                "steps": r2["steps"],
+                "description": r2["description"],
+            },
+            {
+                "task_id": "task_binge_procrastinator",
+                "grader": "grade_task_binge_procrastinator",
+                "score": r3["score"],
+                "steps": r3["steps"],
+                "description": r3["description"],
+            },
+        ],
+        "tasks": {
+            "task_casual": r1,
+            "task_addict": r2,
+            "task_binge_procrastinator": r3,
+        },
+        "overall_score": overall,
+    }
+
+
+@app.get("/grade/{task_id}")
+def grade_single(task_id: str):
+    """Run grader for a single task."""
+    graders = {
+        "task_casual": grade_task_casual,
+        "task_addict": grade_task_addict,
+        "task_binge_procrastinator": grade_task_binge_procrastinator,
+    }
+    if task_id not in graders:
+        raise HTTPException(status_code=404, detail=f"Unknown task_id: {task_id}")
+    return graders[task_id]()
 
 
 @app.get("/tasks")
