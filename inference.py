@@ -8,6 +8,16 @@ import os
 import json
 import time
 import requests
+from openai import OpenAI
+
+# ── Scaler injects these exact variable names ──────────────────────────────────
+API_KEY = os.environ.get("API_KEY", "")
+API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o-mini")
+ENV_URL = os.environ.get("ENV_URL", "https://team-youtube-ctrl-youtube-addiction-controller.hf.space")
+
+# ── Initialize client with Scaler's proxy creds ────────────────────────────────
+client = OpenAI(api_key=API_KEY, base_url=API_BASE_URL)
 
 TASKS = ["task_casual", "task_addict", "task_binge_procrastinator"]
 
@@ -31,30 +41,14 @@ Respond with ONLY one word: allow, block, or suggest_break
 """
 
 
-def get_client():
-    """Create OpenAI client using the validator-injected API_KEY and API_BASE_URL."""
-    from openai import OpenAI
-    # Scaler injects API_KEY and API_BASE_URL — must use these exact names
-    api_key = os.environ.get("API_KEY", os.environ.get("HF_TOKEN", ""))
-    base_url = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-    if not api_key:
-        raise ValueError("API_KEY environment variable is not set")
-    return OpenAI(api_key=api_key, base_url=base_url)
-
-
 def call_env(endpoint: str, method: str = "GET", payload: dict = None) -> dict:
-    env_url = os.environ.get("ENV_URL", "http://localhost:7860")
-    url = f"{env_url}{endpoint}"
-    try:
-        if method == "POST":
-            resp = requests.post(url, json=payload, timeout=30)
-        else:
-            resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-        return resp.json()
-    except requests.exceptions.RequestException as e:
-        print(f"[STEP] event=env_error endpoint={endpoint} error={str(e)}", flush=True)
-        raise
+    url = f"{ENV_URL}{endpoint}"
+    if method == "POST":
+        resp = requests.post(url, json=payload, timeout=30)
+    else:
+        resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def get_action_from_llm(observation: dict) -> str:
@@ -64,23 +58,16 @@ def get_action_from_llm(observation: dict) -> str:
 
 What action should you take? Reply with ONLY: allow, block, or suggest_break"""
 
-    try:
-        client = get_client()
-        model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_msg},
-            ],
-            max_tokens=10,
-            temperature=0.2,
-        )
-        action = response.choices[0].message.content.strip().lower()
-    except Exception as e:
-        print(f"[STEP] event=llm_error error={str(e)}", flush=True)
-        action = "allow"
-
+    response = client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_msg},
+        ],
+        max_tokens=10,
+        temperature=0.2,
+    )
+    action = response.choices[0].message.content.strip().lower()
     if action not in ("allow", "block", "suggest_break"):
         action = "allow"
     return action
@@ -118,10 +105,7 @@ def run_episode(task_id: str) -> dict:
 
 
 def main():
-    model = os.environ.get("MODEL_NAME", "gpt-4o-mini")
-    env_url = os.environ.get("ENV_URL", "http://localhost:7860")
-
-    print(f"[START] task=youtube_addiction_controller model={model} env_url={env_url}", flush=True)
+    print(f"[START] task=youtube_addiction_controller model={MODEL_NAME} env_url={ENV_URL}", flush=True)
 
     all_results = []
 
